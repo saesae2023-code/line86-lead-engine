@@ -4,11 +4,20 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { validateTelegramInitData } from './telegram/auth.js';
 import { listLeads, updateLeadStatus } from './storage/db.js';
-import { getTeamMember } from './storage/team.js';
+import { getTeamMember, upsertTeamMember } from './storage/team.js';
 import type { LeadStatus } from './types/lead.js';
 
 const port = Number(process.env.PORT ?? 3000);
 const publicDir = path.resolve('public');
+
+const adminId = Number(process.env.TELEGRAM_ADMIN_ID ?? 0);
+if (adminId) {
+  upsertTeamMember({
+    telegramId: adminId,
+    role: 'ADMIN',
+    active: true,
+  });
+}
 
 function json(res: http.ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
