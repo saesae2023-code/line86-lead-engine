@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Line 86 Lead Desk</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?64"></script>
+  <style>
+    :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background: var(--tg-theme-bg-color, #fff); color: var(--tg-theme-text-color, #111); }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 24px; margin: 4px 0 4px; }
+    .sub { color: var(--tg-theme-hint-color, #777); margin-bottom: 16px; }
+    .lead { border: 1px solid rgba(127,127,127,.24); border-radius: 16px; padding: 14px; margin: 10px 0; }
+    .top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .company { font-weight: 700; font-size: 17px; }
+    .score { font-weight: 700; white-space: nowrap; }
+    .meta { font-size: 13px; color: var(--tg-theme-hint-color, #777); margin-top: 6px; }
+    .reason { margin-top: 9px; font-size: 14px; line-height: 1.4; }
+    select { margin-top: 12px; width: 100%; padding: 10px; border-radius: 10px; }
+    .empty { padding: 28px 0; text-align: center; color: var(--tg-theme-hint-color, #777); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Line 86 Lead Desk</h1>
+    <div class="sub" id="subtitle">Загрузка лидов…</div>
+    <div id="leads"></div>
+  </div>
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const initData = tg.initData;
+    const leadParam = new URLSearchParams(location.search).get('lead');
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Telegram-Init-Data': initData,
+          ...(options.headers || {})
+        }
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Ошибка запроса');
+      return body;
+    }
+
+    function render(leads) {
+      const root = document.getElementById('leads');
+      document.getElementById('subtitle').textContent = `Лидов: ${leads.length}`;
+      const filtered = leadParam ? leads.filter(l => String(l.id) === leadParam) : leads;
+      if (!filtered.length) {
+        root.innerHTML = '<div class="empty">Лиды пока не найдены.</div>';
+        return;
+      }
+
+      root.innerHTML = filtered.map(lead => `
+        <div class="lead">
+          <div class="top">
+            <div>
+              <div class="company">${escapeHtml(lead.companyName)}</div>
+              <div class="meta">${escapeHtml(lead.industry || '')}${lead.website ? ' · ' + escapeHtml(lead.website) : ''}</div>
+            </div>
+            <div class="score">${lead.score}/100</div>
+          </div>
+          ${lead.qualificationReason ? `<div class="reason">${escapeHtml(lead.qualificationReason)}</div>` : ''}
+          <select data-id="${lead.id}" onchange="changeStatus(this)">
+            ${['NEW','QUALIFIED','HOT','REJECTED'].map(s => `<option value="${s}" ${lead.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      `).join('');
+    }
+
+    async function changeStatus(el) {
+      try {
+        await api(`/api/leads/${el.dataset.id}/status`, {
+          method: 'POST', body: JSON.stringify({ status: el.value })
+        });
+        tg.HapticFeedback?.notificationOccurred('success');
+      } catch (e) {
+        tg.showAlert(e.message);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    }
+
+    api('/api/leads').then(data => render(data.leads)).catch(err => {
+      document.getElementById('subtitle').textContent = 'Нет доступа';
+      document.getElementById('leads').innerHTML = `<div class="empty">${escapeHtml(err.message)}</div>`;
+    });
+  </script>
+</body>
+</html>
