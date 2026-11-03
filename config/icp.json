@@ -1,0 +1,21 @@
+{
+  "prioritySegments": [
+    "ozon_seller",
+    "wildberries_seller",
+    "wholesaler",
+    "online_store",
+    "manufacturer",
+    "brand_sourcing_in_china"
+  ],
+  "positiveSignals": [
+    "imports_from_china",
+    "recurring_supply",
+    "marketplace_presence",
+    "needs_qc",
+    "needs_labeling",
+    "needs_consolidation",
+    "needs_compliant_logistics"
+  ],
+  "minimumQualifiedScore": 65,
+  "hotLeadScore": 80
+}
